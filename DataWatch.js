@@ -16,7 +16,8 @@
      *          or an object containing the callback function with an optional mutate param, which would look like this:
      *          {func: function(){..}, mutate: true}
      * @param {object} [thisArg] - the object to bind the 'this' of the callback function for
-     * @returns {boolean} - whether was successful or not
+     * @returns {object|boolean} - If it was successful, it returns the thisArg of the function. If no thisArg was supplied, then it returns the watched object (which is then the thisArg).
+     *                             If unsuccessful, it returns false.
      */
     module.watch = function (obj, prop, funcParam, thisArg) {
         var desc = Object.getOwnPropertyDescriptor(obj, prop),
@@ -40,15 +41,12 @@
 
         var newSetter;
 
-        //note: currently sending all params as one event object. Maybe should send as several params ?
-
-
         if (!setter || setter && !setter._watchers) {
             var propertySetter = function (newVal) {
                 var oldVal = val;
                 for (var i = 0; i < propertySetter._watchers.length; i++) {
                     var watcher = propertySetter._watchers[i];
-                    var tempVal = watcher.func.call(watcher.scope, {property: prop, oldVal: oldVal, newVal: newVal});
+                    var tempVal = watcher.func.call(watcher.scope, prop, oldVal, newVal);
                     if (watcher.mutate) {
                         newVal = tempVal;
                     }
@@ -60,8 +58,8 @@
             propertySetter._watchers = [];
 
             if (setter) {
-                var oldSetterWatcher = {func: function (params) {
-                    setter(params.newVal);
+                var oldSetterWatcher = {func: function (prop, oldVal, newVal) {
+                    setter(newVal);
                 }, scope: obj, mutate: true};
                 propertySetter._watchers.push(oldSetterWatcher);
             }
@@ -150,7 +148,7 @@
     module.watch.getMutators = function (obj, prop) {
         var desc = Object.getOwnPropertyDescriptor(obj, prop);
         if (!prop || !desc || !desc.set || !desc.set._watchers || desc.set._watchers.length === 0) {
-            return []; //there's no setter or no watchers, so nothing to unwatch
+            return []; 
         } else {
             var watchers = desc.set._watchers,
                 mutators = [];
