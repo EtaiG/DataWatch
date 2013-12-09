@@ -5,7 +5,7 @@
  * var myMod = (function(module){....}({})
  */
 
-(function (module) {
+(function (module, allowOverride) {
 
     module = module || window._;
     /**
@@ -19,7 +19,7 @@
      * @returns {object|boolean} - If it was successful, it returns the thisArg of the function. If no thisArg was supplied, then it returns the watched object (which is then the thisArg).
      *                             If unsuccessful, it returns false.
      */
-    module.watch = function (obj, prop, funcParam, thisArg) {
+    var watch = function watch(obj, prop, funcParam, thisArg) {
         var desc = Object.getOwnPropertyDescriptor(obj, prop),
             getter = desc.get, setter = desc.set;
 
@@ -92,7 +92,7 @@
      * @returns {boolean} - whether was successful or not in unwatching. Will return false if there are no watchers, or if such a function does not exist.
      *                      if this returns false, it probably means the callback function was declared inside of the watch, and not referenced
      */
-    module.unwatch = function (obj, prop, func) {
+    var unwatch = function unwatch(obj, prop, func) {
         var desc = Object.getOwnPropertyDescriptor(obj, prop);
         if (!prop || !desc || !desc.set || !desc.set._watchers || desc.set._watchers.length === 0) {
             return false; //there's no setter or no watchers, so nothing to unwatch
@@ -130,7 +130,7 @@
      * @param {string} prop - the property of the object we want to get the watchers for
      * @returns {Array} array of watchers
      */
-    module.watch.getWatchers = function (obj, prop) {
+    var getWatchers = function getWatchers(obj, prop) {
         var desc = Object.getOwnPropertyDescriptor(obj, prop);
         if (!prop || !desc || !desc.set || !desc.set._watchers || desc.set._watchers.length === 0) {
             return []; //there's no setter or no watchers, so nothing to unwatch
@@ -145,10 +145,10 @@
      * @param {string} prop - the property of the object we want to get the 'mutating' watchers for
      * @returns {Array} array of watchers which mutate the result of the property when set
      */
-    module.watch.getMutators = function (obj, prop) {
+    var getMutators = function getMutators(obj, prop) {
         var desc = Object.getOwnPropertyDescriptor(obj, prop);
         if (!prop || !desc || !desc.set || !desc.set._watchers || desc.set._watchers.length === 0) {
-            return []; 
+            return [];
         } else {
             var watchers = desc.set._watchers,
                 mutators = [];
@@ -161,6 +161,34 @@
             return mutators;
         }
     }
+
+
+    var addFunctionsToNamespace = function(){
+        var newMethodsArr = [['watch', watch],['unwatch', unwatch],['getWatchers',getWatchers],['getMutators',getMutators]];
+
+        if(!allowOverride){
+            var isOverriding = false;
+            for(var i in newMethodsArr){
+                if(module.hasOwnProperty(newMethodsArr[i][0])){
+                    isOverriding = true;
+                    throw new Error ('Overriding a previously defined function: ' + newMethodsArr[i][0]);
+                }
+            }
+            if(isOverriding){
+                return;
+            }
+        }
+
+        var config = {writable: false, enumerable: false, configurable: true};
+
+        for(var j in newMethodsArr){
+            config.value = newMethodsArr[j][1];
+            Object.defineProperty(module, newMethodsArr[j][0],config);
+        }
+    }
+
+    addFunctionsToNamespace();
+    //addFunctionsToNamespace(...funcs...)
 
     return module;
 })();
