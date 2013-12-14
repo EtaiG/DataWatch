@@ -123,7 +123,6 @@
     };
 
 
-    /***** debug *****/
     /**
      *
      * @param {object} obj - the object we're checking
@@ -164,31 +163,29 @@
 
 
     var addFunctionsToNamespace = function(){
-        var newMethodsArr = [['watch', watch],['unwatch', unwatch],['getWatchers',getWatchers],['getMutators',getMutators]];
 
-        if(!allowOverride){
-            var isOverriding = false;
-            for(var i in newMethodsArr){
-                if(module.hasOwnProperty(newMethodsArr[i][0])){
-                    isOverriding = true;
-                    throw new Error ('Overriding a previously defined function: ' + newMethodsArr[i][0]);
-                }
-            }
-            if(isOverriding){
-                return;
-            }
+        if(!allowOverride
+            &&     module.hasOwnProperty('watch')
+                || module.hasOwnProperty('unwatch')
+                || module.hasOwnProperty('getWatchers')
+                || module.hasOwnProperty('getMutators')){
+            throw new Error('DataWatch is overriding a previously declared method.')
         }
+
 
         var config = {writable: false, enumerable: false, configurable: true};
 
-        for(var j in newMethodsArr){
-            config.value = newMethodsArr[j][1];
-            Object.defineProperty(module, newMethodsArr[j][0],config);
-        }
+        config.value = watch;
+        Object.defineProperty(module,'watch', config);
+        config.value = unwatch;
+        Object.defineProperty(module,'unwatch', config);
+        config.value = getWatchers;
+        Object.defineProperty(module,'getWatchers', config);
+        config.value = getMutators;
+        Object.defineProperty(module,'getMutators', config);
     }
 
     addFunctionsToNamespace();
-    //addFunctionsToNamespace(...funcs...)
 
     return module;
 })();
